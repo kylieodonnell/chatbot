@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laptop Helper Chatbot — Prototype</title>
+<style>
+  :root {
+    --bg: #FAFBFA;
+    --panel: #FFFFFF;
+    --text: #2F2F2F;
+    --muted: #98A2A8;
+    --border: #465a6e;
+
+    --bot: #F4F7F6;
+    --user: #d3caed;
+    --accent: #64a781;
+    --chip: #FFFFFF;
+    --chip-hover: #F7FAF8;
+
+    --warn-bg: #FFF3F2;
+    --warn-text: #B2554B;
+    --ok-bg: #F3FFF7;
+    --ok-text: #197A4E;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: "Nunito", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+  }
+
+  .app {
+    width: min(860px, 96vw);
+    height: min(82vh, 900px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    display: grid;
+    grid-template-rows: 64px 1fr auto;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #5A6A62;
+  }
+
+  .status {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .chat {
+    padding: 20px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    background: var(--panel);
+  }
+
+  .msg {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+    animation: rise 0.25s ease;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .bubble {
+    max-width: 72%;
+    padding: 12px 14px;
+    border-radius: 18px;
+    line-height: 1.45;
+    font-size: 15px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  }
+
+  .bot .bubble {
+    background: var(--bot);
+  }
+
+  .user {
+    flex-direction: row-reverse;
+  }
+
+  .user .bubble {
+    background: var(--user);
+  }
+
+  .choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .chip {
+    background: var(--chip);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .chip:hover {
+    transform: translateY(-1px);
+    background: var(--chip-hover);
+    border-color: #56655c;
+  }
+
+  .composer {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 16px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    outline: none;
+  }
+
+  input[type="text"]:focus {
+    border-color: #CADFD3;
+    box-shadow: 0 0 0 3px rgba(202, 223, 211, 0.25);
+  }
+
+  button {
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease, border-color 0.15s ease;
+  }
+
+  button:hover {
+    background: var(--chip-hover);
+    transform: translateY(-1px);
+    border-color: #D9E7DF;
+  }
+
+  .note {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .muted {
+    color: var(--muted);
+  }
+
+  .recommendation {
+    margin-top: 10px;
+    padding-left: 10px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .badge {
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+
+  .badge.warn {
+    background: var(--warn-bg);
+    color: var(--warn-text);
+  }
+
+  .badge.ok {
+    background: var(--ok-bg);
+    color: var(--ok-text);
+  }
+
+  .handoff {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px dashed #D9E7DF;
+    border-radius: 12px;
+    background: var(--bot);
+    color: #4A635A;
+  }
+</style>
+
+
+</head>
+<body>
+  <div class="app" role="application" aria-label="Laptop helper chatbot">
+    <header>
+      <h1>Laptop Helper</h1>
+      <small class="status" id="status">Ready</small>
+    </header>
+
+    <main id="chat" class="chat" tabindex="0"></main>
+
+    <form class="composer" id="composer" autocomplete="off">
+      <input id="text" type="text" placeholder="Type here (e.g., 'work', 'gaming', 'help')" aria-label="Message" />
+      <button type="submit" id="send">Send</button>
+      <button type="button" id="reset" title="Restart conversation">Reset</button>
+      <div class="note">Tip: you can click chips or type answers. Type <strong>help</strong> or <strong>agent</strong> anytime.</div>
+    </form>
+  </div>
+
+  <script>
+    // state definitions
+    const State = {
+      START: 'start',
+      MAIN_USE: 'mainUse',
+      WORK_TRAVEL: 'workTravel',
+      WORK_TYPE: 'workType',
+      GAMING_FORM: 'gamingForm', // laptop or desktop
+      END: 'end',
+      AGENT: 'agent'
+    };
+
+    // context for the conversation
+    const ctx = {
+      state: State.START,
+      invalidCount: 0,      // accumulates across states (simple policy)
+      answers: {
+        mainUse: null,      // 'work' | 'school' | 'gaming' | 'everyday'
+        travelOften: null,  // 'yes' | 'no'
+        workType: null,     // 'office' | 'creative' | 'programming' | 'mixed'
+        gamingForm: null    // 'laptop' | 'desktop'
+      }
+    };
+
+    // ui elements
+    const chat = document.getElementById('chat');
+    const status = document.getElementById('status');
+    const composer = document.getElementById('composer');
+    const textInput = document.getElementById('text');
+    const resetBtn = document.getElementById('reset');
+
+    function addMessage(role, html) {
+      const wrapper = document.createElement('div');
+      wrapper.className = `msg ${role}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = html;
+      wrapper.appendChild(bubble);
+      chat.appendChild(wrapper);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function chips(options) {
+      // options: [{label, value}]
+      const c = document.createElement('div');
+      c.className = 'choices';
+      options.forEach(opt => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip';
+        b.textContent = opt.label;
+        b.addEventListener('click', () => handleUserInput(opt.value));
+        c.appendChild(b);
+      });
+      return c;
+    }
+
+    function addChoices(options) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'msg bot';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.appendChild(chips(options));
+      wrapper.appendChild(bubble);
+      chat.appendChild(wrapper);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function setStatus(msg) { status.textContent = msg; }
+
+    function normalize(input) {
+      return (input || '').toString().trim().toLowerCase();
+    }
+
+    function isAgentKeyword(v) {
+      return ['agent','representative','human','help','support'].includes(v);
+    }
+
+    // give users three tries total before handing off
+    function handleInvalid(promptHtml, validOptionHint) {
+      ctx.invalidCount += 1;
+      const triesLeft = Math.max(0, 3 - ctx.invalidCount);
+
+      if (ctx.invalidCount >= 3) {
+        // agent handoff after 3 invalid attempts total (*note* there is no live agent)
+        addMessage('bot', `I'm sorry, I'm still not following. I'll connect you with a representative now.<span class="badge warn">handoff</span>`);
+        ctx.state = State.AGENT;
+        finishAgent();
+        return;
+      }
+
+      // give guidance depending on remaining tries
+      const plural = triesLeft === 1 ? 'try' : 'tries';
+      const hint = validOptionHint ? `<div class="note">Try one of: <em>${validOptionHint}</em></div>` : '';
+      addMessage(
+        'bot',
+        `${promptHtml} <span class="badge warn">${triesLeft} ${plural} left</span>${hint}`
+      );
+
+      // reshow choices for convenience, if current state has them
+      showChoicesForState();
+    }
+
+    // routing each step through here so the flow stays legible.
+    function start() {
+      setStatus('Greeting');
+      addMessage('bot', `<strong>Hello! I can help you find the perfect laptop.</strong><br/>What will you mainly use your laptop for?`);
+      ctx.state = State.MAIN_USE;
+      showChoicesForState();
+    }
+
+    function showChoicesForState() {
+      switch (ctx.state) {
+        case State.MAIN_USE:
+          addChoices([
+            { label: 'Work / Business', value: 'work' },
+            { label: 'School', value: 'school' },
+            { label: 'Gaming', value: 'gaming' },
+            { label: 'Everyday use', value: 'everyday' }
+          ]);
+          break;
+        case State.WORK_TRAVEL:
+          addChoices([
+            { label: 'Yes, I travel often', value: 'yes' },
+            { label: "No, mostly stationary", value: 'no' }
+          ]);
+          break;
+        case State.WORK_TYPE:
+          addChoices([
+            { label: 'Office / Admin', value: 'office' },
+            { label: 'Creative', value: 'creative' },
+            { label: 'Programming / Data', value: 'programming' },
+            { label: 'Mixed / Remote work', value: 'mixed' }
+          ]);
+          break;
+        case State.GAMING_FORM:
+          addChoices([
+            { label: 'Laptop', value: 'laptop' },
+            { label: 'Desktop', value: 'desktop' }
+          ]);
+          break;
+      }
+    }
+
+    function handleUserInput(raw) {
+      const v = normalize(raw);
+      if (!v) return; 
+
+      // agent shortcut
+      if (isAgentKeyword(v)) {
+        addMessage('user', raw);
+        addMessage('bot', `Connecting you with a representative… <span class="badge warn">handoff</span>`);
+        ctx.state = State.AGENT;
+        finishAgent();
+        return;
+      }
+
+      // depending on state, route to the right handler
+      switch (ctx.state) {
+        case State.MAIN_USE: {
+          addMessage('user', raw);
+          if (['work','business'].includes(v)) {
+            ctx.answers.mainUse = 'work';
+            ctx.state = State.WORK_TRAVEL;
+            ctx.invalidCount = 0; // reset on valid answer
+            addMessage('bot', 'Do you travel often?');
+            showChoicesForState();
+          } else if (v === 'school') {
+            ctx.answers.mainUse = 'school';
+            ctx.state = State.END;
+            ctx.invalidCount = 0;
+            recommendForSchool();
+          } else if (v === 'gaming') {
+            ctx.answers.mainUse = 'gaming';
+            ctx.state = State.GAMING_FORM;
+            ctx.invalidCount = 0;
+            addMessage('bot', 'Laptop or Desktop?');
+            showChoicesForState();
+          } else if (['everyday','every day','daily','general'].includes(v)) {
+            ctx.answers.mainUse = 'everyday';
+            ctx.state = State.END;
+            ctx.invalidCount = 0;
+            recommendForEveryday();
+          } else if (['a','b','c','d'].includes(v)) {
+            // map letter options to the four categories
+            const map = { a:'work', b:'school', c:'gaming', d:'everyday' };
+            return handleUserInput(map[v]);
+          } else {
+            handleInvalid(
+              `I\'m sorry, I didn\'t catch that. What will you mainly use your laptop for?`,
+              'a) work, b) school, c) gaming, d) everyday'
+            );
+          }
+          break;
+        }
+        // work branch
+        case State.WORK_TRAVEL: {
+          addMessage('user', raw);
+          if (['yes','y'].includes(v)) {
+            ctx.answers.travelOften = 'yes';
+            ctx.state = State.WORK_TYPE;
+            ctx.invalidCount = 0;
+            addMessage('bot', 'What type of work do you do most often?');
+            showChoicesForState();
+          } else if (['no','n'].includes(v)) {
+            ctx.answers.travelOften = 'no';
+            ctx.state = State.WORK_TYPE;
+            ctx.invalidCount = 0;
+            addMessage('bot', 'What type of work do you do most often?');
+            showChoicesForState();
+          } else {
+            handleInvalid(`Please choose <strong>Yes</strong> or <strong>No</strong> for travel.`, 'yes, no');
+          }
+          break;
+        }
+        // type of work
+        case State.WORK_TYPE: {
+          addMessage('user', raw);
+          const map = {
+            'office': 'office', 'admin':'office', 'office/admin':'office',
+            'creative':'creative', 'design':'creative', 'designer':'creative',
+            'programming':'programming', 'data':'programming', 'data analysis':'programming', 'engineering':'programming',
+            'mixed':'mixed', 'remote':'mixed', 'mixed/remote':'mixed'
+          };
+          const key = map[v] || v;
+          if (['office','creative','programming','mixed'].includes(key)) {
+            ctx.answers.workType = key;
+            ctx.state = State.END;
+            ctx.invalidCount = 0;
+            recommendForWork();
+          } else {
+            handleInvalid(`Choose a work type.`, 'office/admin, creative, programming/data, mixed/remote');
+          }
+          break;
+        }
+        // gaming branch
+        case State.GAMING_FORM: {
+          addMessage('user', raw);
+          if (['laptop','notebook'].includes(v)) {
+            ctx.answers.gamingForm = 'laptop';
+            ctx.state = State.END;
+            ctx.invalidCount = 0;
+            recommendForGaming('laptop');
+          } else if (['desktop','tower','pc'].includes(v)) {
+            ctx.answers.gamingForm = 'desktop';
+            ctx.state = State.END;
+            ctx.invalidCount = 0;
+            recommendForGaming('desktop');
+          } else {
+            handleInvalid('Please pick Laptop or Desktop.', 'laptop, desktop');
+          }
+          break;
+        }
+        case State.END:
+        case State.AGENT:
+          addMessage('user', raw);
+          addMessage('bot', `<span class="muted">We\'re finished here. Type <strong>reset</strong> to start again, or <strong>agent</strong> for a human.</span>`);
+          break;
+      }
+    }
+
+    function recommendForWork() {
+      const travel = ctx.answers.travelOften === 'yes';
+      const type = ctx.answers.workType;
+
+
+      // suggestions that i layed out in diagram
+      const suggestions = {
+        office: travel
+          ? [
+              ['ASUS Zenbook 14 OLED', 'lightweight, efficient, good battery life'],
+              ['HP EliteBook 840 G9', 'business-grade, reliable']
+            ]
+          : [
+              ['Lenovo ThinkPad X1 2‑in‑1 Gen 10', 'strong build, flexible form factor'],
+              ['Dell Pro 16 PC16250', 'bigger screen, more ports']
+            ],
+        creative: travel
+          ? [
+              ['Microsoft Surface Laptop Studio 2', 'ideal for sketching/designers']
+            ]
+          : [
+              ['Apple MacBook Pro 16"', 'powerful for creatives, big display']
+            ],
+        programming: travel
+          ? [
+              ['Microsoft Surface Laptop Copilot+ 13.8"', 'slim, premium build, great battery']
+            ]
+          : [
+              ['Lenovo ThinkPad X1 2‑in‑1 Gen 10', 'durable keyboard, multitask ready']
+            ],
+        mixed: travel
+          ? [
+              ['ASUS Zenbook 14 OLED', 'balanced portability and performance']
+            ]
+          : [
+              ['Dell Pro 16 PC16250', 'larger display and I/O for docking']
+            ]
+      };
+
+      const picks = suggestions[type] || [];
+      const items = picks.map(([name, desc]) => `<div class="recommendation"><strong>${name}</strong><br><span class="muted">${desc}</span></div>`).join('');
+
+      addMessage('bot', `<strong>Recommended for your work needs</strong> ${travel ? '(frequent travel)' : '(mostly stationary)'}:${items}`);
+      wrapUp();
+    }
+
+    function recommendForSchool() {
+      addMessage('bot', `<strong>Recommended for school</strong>:
+        <div class="recommendation"><strong>Apple MacBook Air 13"</strong><br><span class="muted">light, reliable, long battery life</span></div>`);
+      wrapUp();
+    }
+
+    function recommendForEveryday() {
+      addMessage('bot', `<strong>Recommended for everyday use</strong>:
+        <div class="recommendation"><strong>Apple MacBook Air 13"</strong><br><span class="muted">simple, quiet, quick for daily tasks</span></div>`);
+      wrapUp();
+    }
+
+    function recommendForGaming(form) {
+      if (form === 'laptop') {
+        addMessage('bot', `<strong>Gaming laptop pick</strong>:
+          <div class="recommendation"><strong>Razer Blade 16</strong><br><span class="muted">high-refresh display, strong GPU options</span></div>`);
+      } else {
+        addMessage('bot', `<strong>Gaming desktop pick</strong>:
+          <div class="recommendation"><strong>ASUS ROG G700 Tower</strong><br><span class="muted">upgrade-friendly tower with robust cooling</span></div>`);
+      }
+      wrapUp();
+    }
+
+    function wrapUp() {
+      ctx.state = State.END;
+      setStatus('Done');
+      addMessage('bot', `<em>Want to explore again?</em> Type <strong>reset</strong> to restart or <strong>agent</strong> to talk to a human.`);
+    }
+
+    function finishAgent() {
+      setStatus('Handoff to human');
+      addMessage('bot', `<div class="recommendation"><strong>Representative connected</strong><br><span class="muted">Thanks for your patience. Please describe your needs in a sentence or two.</span></div>`);
+    }
+
+    // --- wire up composer ---
+    composer.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = textInput.value;
+      const nv = normalize(v);
+      if (nv === 'reset' || nv === 'restart') {
+        hardReset();
+        return;
+      }
+      if (!v.trim()) return;
+      handleUserInput(v);
+      textInput.value = '';
+      textInput.focus();
+    });
+
+    resetBtn.addEventListener('click', hardReset);
+
+    function hardReset() {
+      chat.innerHTML = '';
+      ctx.state = State.START;
+      ctx.invalidCount = 0;
+      ctx.answers = { mainUse: null, travelOften: null, workType: null, gamingForm: null };
+      setStatus('Reset');
+      start();
+      textInput.focus();
+    }
+
+
+    start();
+  </script>
+</body>
+</html>
